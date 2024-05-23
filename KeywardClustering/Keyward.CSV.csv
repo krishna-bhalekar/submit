@@ -1,0 +1,11 @@
+keyword,search_volume,position,ranking_url
+keyword1,12,3,www.exampl1.com
+keyword2,45,3,www.example2.com
+keyword3,34,45,www.example4.com
+keyword4,87,6,www.example5.com
+keyword5,89,4,www.example6.com
+keyword6,76,6,www.example10.com
+keyword7,56,7,www.example7.com
+keyword8,87,5,www.example8.com
+keyword9,99,34,www.example9.com
+keyword10,76,6,www.example3.com
