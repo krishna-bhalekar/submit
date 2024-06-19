@@ -54,17 +54,17 @@ def calculate_click_totals(df, grouped_df, keyword_column, clicks_column):
 # Streamlit user interface
 st.title("Keyword Grouper SEO App")
 st.markdown("made in Streamlit 🎈 by [Cristiano Caggiula](https://www.linkedin.com/in/cristiano-caggiula/)")
-st.write("The app cluster keywords extracted from Google Search Console and more. The app groups the keywords and, for each group, it is possible to see the total number of clicks, to identify the most profitable groups in terms of traffic.")
+st.write("The app clusters keywords extracted from Google Search Console and more. The app groups the keywords and, for each group, it is possible to see the total number of clicks, identifying the most profitable groups in terms of traffic.")
 st.divider()
-# Allow the user to choose the language (English or Italian) and modify the stop words dictionary
 
+# Allow the user to choose the language (English or Italian) and modify the stop words dictionary
 col1, col2 = st.columns(2)
+
 with col1:    
-    st.subheader ("💬 Select language")
+    st.subheader("💬 Select language")
     language = st.selectbox("", ["English", "Italian"])
 
     if language == "English":
-        st.write("")
         default_stop_words = [
             'and', 'but', 'is', 'the', 'to', 'in', 'for', 'on', 'with', 'as', 'by', 'at', 'from',
             'about', 'against', 'between', 'into', 'through', 'during', 'before', 'after', 'above',
@@ -75,7 +75,6 @@ with col1:
             'should', 'now'
         ]
     else:
-        st.write("")
         default_stop_words = [
             'a', 'adesso', 'ai', 'al', 'alla', 'allo', 'allora', 'altre',
             'altri', 'altro', 'anche', 'ancora', 'avere', 'aveva', 'avevano',
@@ -90,21 +89,28 @@ with col1:
         ]
 
 # Text area for custom stop words
-    with st.expander("Customize Stop Words"):
-        custom_stop_words = st.text_area("One per line", "\n".join(default_stop_words))
-        stop_words = [word.strip() for word in custom_stop_words.split('\n') if word.strip()]
-with col2:
-    st.text("")
+with st.expander("Customize Stop Words"):
+    custom_stop_words = st.text_area("One per line", "\n".join(default_stop_words))
+    stop_words = [word.strip() for word in custom_stop_words.split('\n') if word.strip()]
+
 st.divider()
-st.subheader("⬆️ Upload Keyword CSV")
-tab1, tab2 = st.tabs(["Keywords and Clicks", "Keywords only"]) # File upload widget for keywords with clicks
+
+# Upload CSV files for keywords with and without clicks
+tab1, tab2 = st.columns(2)
+
 with tab1:
+    st.subheader("⬆️ Upload Keyword CSV with Clicks")
     uploaded_file = st.file_uploader("CSV with Keywords and Clicks", type=["csv"])
+
 with tab2:
-    uploaded_file_without_clicks = st.file_uploader("Upload your CSV with Keywords only (no Clicks)", type=["csv"])
+    st.subheader("⬆️ Upload Keyword CSV without Clicks")
+    uploaded_file_without_clicks = st.file_uploader("CSV with Keywords only (no Clicks)", type=["csv"])
+
+st.divider()
 
 # Control for minimum group size and tuple length
 min_group_size, ngram_size = st.columns(2)
+
 with min_group_size:
     min_group_size = st.slider("Minimum Group Size",
                                min_value=1,
@@ -122,14 +128,14 @@ with ngram_size:
     help="Drag the slider to choose the n-gram size for the keyword. An n-gram size of 1 means a single word, whereas 5 means a phrase of up to 5 words."
 )
 
-# Column mapping for keywords with clicks
+# Process uploaded file with keywords and clicks
 if uploaded_file is not None:
     data = pd.read_csv(uploaded_file)
     columns = data.columns
     
     st.write("Map CSV columns to the required fields 👇")
     
-    keyword_column = st.selectbox(" Keyword Column is:", columns)
+    keyword_column = st.selectbox("Keyword Column is:", columns)
     clicks_column = st.selectbox("Clicks Column is:", columns)
     
     if st.button("Group Keywords with Clicks ✨"):
@@ -144,16 +150,16 @@ if uploaded_file is not None:
                 # Sort groups by total clicks in descending order
                 sorted_groups = sorted(click_totals.items(), key=lambda x: x[1], reverse=True)
                 top_groups = sorted_groups[:5]
-                tab1, tab2 = st.columns([2, 2])
-                # Expand each group to show keywords and clicks
-                with tab1:
-                    st.subheader("🔑 Groups")
+                
+                # Display results in columns
+                with st.columns(2):
+                    st.subheader("🔑 Groups with Clicks")
                     for group, total_clicks in sorted_groups:
                         with st.expander(f"{group} - Total Clicks: {total_clicks}"):
                             keywords_list = grouped_keywords_df[grouped_keywords_df['Group'] == group]['Keywords'].tolist()
                             keyword_clicks_df = data[data[keyword_column].isin(keywords_list)][[keyword_column, clicks_column]]
-                            st.write(keyword_clicks_df)
-                with tab2:                   
+                            st.table(keyword_clicks_df)
+
                     # Plot histogram for the top 5 groups by clicks
                     top_groups_clicks = [click for group, click in top_groups]
                     top_group_names = [group for group, click in top_groups]
@@ -166,7 +172,7 @@ if uploaded_file is not None:
                         ax.set_title('Top 5 Groups by Clicks')
                         st.pyplot(fig)
 
-# Column mapping for keywords without clicks from uploaded file
+# Process uploaded file with keywords without clicks
 if uploaded_file_without_clicks is not None:
     data_without_clicks = pd.read_csv(uploaded_file_without_clicks)
     columns_without_clicks = data_without_clicks.columns
@@ -180,10 +186,10 @@ if uploaded_file_without_clicks is not None:
             if keyword_column_without_clicks in data_without_clicks.columns:
                 # Group keywords without clicks from the uploaded CSV
                 grouped_keywords_without_clicks_df = group_keywords(data_without_clicks, stop_words, min_group_size, ngram_size, keyword_column=keyword_column_without_clicks)
-                tab4, tab5 = st.columns([2, 2])
-                # Expand each group to show keywords in an expander
-                with tab4:
-                    st.subheader("🔑 Groups")
+                
+                # Display results in columns
+                with st.columns(2):
+                    st.subheader("🔑 Groups without Clicks")
                     for group in grouped_keywords_without_clicks_df['Group'].unique():
                         keywords_list = grouped_keywords_without_clicks_df[grouped_keywords_without_clicks_df['Group'] == group]['Keywords'].tolist()
                         if len(keywords_list) >= min_group_size:
