@@ -45,12 +45,11 @@ def calculate_group_metrics(df, grouped_df, keyword_column='Parent Keyword', cli
         }
     return metrics
 
-# Function to calculate Opportunity Score
-def calculate_opportunity_score(df, volume_column='Volume', difficulty_column='Difficulty', traffic_potential_column='Traffic potential'):
-    max_volume = df[volume_column].max()
-    max_difficulty = df[difficulty_column].max()
-    max_traffic_potential = df[traffic_potential_column].max()
-    df['Opportunity Score'] = (df[volume_column] / max_volume) * 0.4 + ((max_difficulty - df[difficulty_column]) / max_difficulty) * 0.4 + (df[traffic_potential_column] / max_traffic_potential) * 0.2
+# Function to calculate Opportunity Score based on the provided Google Sheets formula
+def calculate_opportunity_score(df, volume_column='Volume', difficulty_column='Difficulty', cpc_column='CPC'):
+    df['Opportunity Score'] = df.apply(
+        lambda row: row[volume_column] * (1 - (row[difficulty_column] / 100)) * (row[cpc_column] / 100) if row[cpc_column] else 0, axis=1
+    )
     return df
 
 # Function to read CSV file with proper encoding and delimiter
@@ -91,9 +90,10 @@ if uploaded_file is not None:
         clicks_column = 'Volume'
         difficulty_column = 'Difficulty'
         traffic_potential_column = 'Traffic potential'
+        cpc_column = 'CPC'
 
         # Calculate Opportunity Score
-        data = calculate_opportunity_score(data)
+        data = calculate_opportunity_score(data, volume_column=clicks_column, difficulty_column=difficulty_column, cpc_column=cpc_column)
 
         # Process the data directly
         with st.spinner("Grouping..."):
@@ -111,7 +111,7 @@ if uploaded_file is not None:
                 top_groups_df['Traffic Potential'] = top_groups_df['Metrics'].map(lambda x: x['Traffic Potential'])
                 st.subheader(title)
                 st.dataframe(top_groups_df.drop(columns=['Metrics']).style.format({
-                    'Total Volume': '{:,.0f}', 'Avg. KD': '{:.0f}', 'Traffic Potential': '{:,.0f}',
+                    'Total Volume': '{:,.0f}', 'Avg. KD': '{:.2f}', 'Traffic Potential': '{:,.0f}',
                 }).background_gradient(cmap='viridis'))
 
             col1, col2, col3 = st.columns(3)
@@ -135,7 +135,7 @@ if uploaded_file is not None:
             st.subheader(f"📄 Filtered Full Sheet by {sort_column}")
             filtered_data = filtered_data.drop(columns=['Last Update', 'First seen', '#'], errors='ignore')
             st.dataframe(filtered_data.style.format({
-                'Volume': '{:,.0f}', 'Difficulty': '{:.0f}', 'Traffic potential': '{:,.0f}', 'Global volume': '{:,.0f}', 'CPC': '{:.2f}', 'CPS': '{:.2f}', 'Opportunity Score': '{:.2f}'
+                'Volume': '{:,.0f}', 'Difficulty': '{:.2f}', 'Traffic potential': '{:,.0f}', 'Global volume': '{:,.0f}', 'CPC': '{:.2f}', 'CPS': '{:.2f}', 'Opportunity Score': '{:.2f}'
             }).background_gradient(cmap='viridis').applymap(lambda x: 'background-color: white; color: black;' if pd.isna(x) or x == '' else ''))
 
             # Filter by keyword
@@ -145,7 +145,7 @@ if uploaded_file is not None:
                 if not keyword_sorted_data.empty:
                     st.subheader(f"📄 Sorted Full Sheet by cluster containing '{keyword}'")
                     st.dataframe(keyword_sorted_data.style.format({
-                        'Volume': '{:,.0f}', 'Difficulty': '{:.0f}', 'Traffic potential': '{:,.0f}', 'Global volume': '{:,.0f}', 'CPC': '{:.2f}', 'CPS': '{:.2f}', 'Opportunity Score': '{:.2f}'
+                        'Volume': '{:,.0f}', 'Difficulty': '{:.2f}', 'Traffic potential': '{:,.0f}', 'Global volume': '{:,.0f}', 'CPC': '{:.2f}', 'CPS': '{:.2f}', 'Opportunity Score': '{:.2f}'
                     }).background_gradient(cmap='viridis').applymap(lambda x: 'background-color: white; color: black;' if pd.isna(x) or x == '' else ''))
 
                     # Calculate unique counts and sum values for the filtered data
@@ -154,7 +154,7 @@ if uploaded_file is not None:
                         unique_counts = df[columns_for_unique_count].nunique()
                         sum_counts = df.select_dtypes(include=[int, float]).sum()
                         avg_difficulty = df[difficulty_column].mean()
-                        avg_cpc = df['CPC'].mean()
+                        avg_cpc = df[cpc_column].mean()
                         avg_opportunity_score = df['Opportunity Score'].mean()
                         unique_parent_keyword = df['Parent Keyword'].unique()
                         return unique_counts, sum_counts, unique_parent_keyword, avg_difficulty, avg_cpc, avg_opportunity_score
@@ -168,10 +168,10 @@ if uploaded_file is not None:
                         'Avg. Difficulty': [avg_difficulty_filtered],
                         'Avg. CPC': [avg_cpc_filtered],
                         'Avg. Opportunity Score': [avg_opportunity_score_filtered]
-                    }).transpose()
+                    })
 
                     # Convert unique parent keyword to DataFrame and transpose it for horizontal display
-                    unique_parent_keyword_filtered_df = pd.DataFrame(unique_parent_keyword_filtered, columns=['Unique Cluster']).transpose()
+                    unique_parent_keyword_filtered_df = pd.DataFrame(unique_parent_keyword_filtered, columns=['Unique Cluster'])
 
                     # Place the tables side by side
                     col_left, col_center, col_right = st.columns([2, 1, 2])
@@ -180,7 +180,7 @@ if uploaded_file is not None:
                         combined_counts_filtered_df = pd.concat([unique_counts_filtered_df, sum_counts_filtered_df])
                         st.dataframe(combined_counts_filtered_df.style.format({
                             'Parent Keyword': '{:,.0f}', 'Keyword': '{:,.0f}', 'SERP Features': '{:,.0f}', 'Country': '{:,.0f}',
-                            'Volume': '{:,.0f}', 'Traffic potential': '{:,.0f}', 'Global volume': '{:,.0f}', 'CPS': '{:.2f}'
+                            'Volume': '{:,.0f}', 'Traffic potential': '{:,.0f}', 'Global volume': '{:,.0f}', 'CPS': '{:.2f}', 'CPC': '{:.2f}', 'Difficulty': '{:.2f}', 'Opportunity Score': '{:.2f}'
                         }).background_gradient(cmap='viridis'))
                     with col_center:
                         st.subheader("Average Values")
